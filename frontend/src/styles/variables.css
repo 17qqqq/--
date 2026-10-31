@@ -1,0 +1,29 @@
+/* 全局主题变量：改这里就能统一调整整个应用的视觉风格 */
+:root {
+  /* ---- 应用布局 ---- */
+  --app-aside-width: 220px;
+  --app-aside-collapsed-width: 64px;
+  --app-header-height: 56px;
+  --app-bg: #f5f7fa;
+  --app-aside-bg: #111827;
+  --app-aside-text: #cbd5e1;
+  --app-header-bg: #ffffff;
+  --app-border: #e5e7eb;
+
+  /* ---- Element Plus 主色覆盖 ----
+   * 只改 --el-color-primary 不够，Element Plus 还使用 light-3/5/7/8/9 这些派生色。
+   * 需要换品牌色时，把下面 6 个值一起替换即可。
+   */
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #5b8def;
+  --el-color-primary-light-5: #8fb1f4;
+  --el-color-primary-light-7: #c3d5f9;
+  --el-color-primary-light-8: #d9e4fb;
+  --el-color-primary-light-9: #ecf2fd;
+  --el-color-primary-dark-2: #1e4fbc;
+
+  /* ---- 全局圆角与字体 ---- */
+  --el-border-radius-base: 6px;
+  --app-font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+}
