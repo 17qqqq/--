@@ -10,7 +10,7 @@
       <el-col v-for="card in cards" :key="card.key" :xs="24" :sm="12" :lg="6">
         <!-- 模型选择卡片：以列表展示当前项目的全部模型，和模型页共用 modelStore -->
         <el-card v-if="card.key === 'model'" shadow="never" class="stat-card model-card">
-          <div class="card-title-row">
+          <div class="card-header">
             <span class="stat-label">{{ card.label }}</span>
             <el-button link type="primary" @click="$router.push('/models')">
               管理
@@ -40,7 +40,7 @@
             </div>
           </div>
 
-          <div class="stat-hint model-hint">
+          <div class="stat-hint hint-row">
             <span v-if="modelStore.models.length">{{ modelStore.models.length }} 个</span>
           </div>
         </el-card>
@@ -52,7 +52,7 @@
           - 没有选中项目时开关禁用，但保留显示，功能入口始终可见
         -->
         <el-card v-else-if="card.key === 'perturbation'" shadow="never" class="stat-card perturbation-card">
-          <div class="card-title-row">
+          <div class="card-header">
             <span class="stat-label">{{ card.label }}</span>
             <el-button link type="primary" @click="$router.push('/perturbations')">
               管理
@@ -61,22 +61,18 @@
 
           <div class="dash-options">
             <div v-for="option in perturbationOptions" :key="option.key" class="dash-option">
-              
               <span class="dash-option-name">{{ option.label }}</span>
+              <!-- 直接改开关时同步写回后端，避免回到配置页被覆盖 -->
               <el-switch
                 size="small"
-                :model-value="perturbationStore.isEnabled(activeProjectId, option.key)"
-                :disabled="!activeProjectId"
-                @update:model-value="
-                // 工作台直接改开关时同步写回后端，避免回到配置页被覆盖
-                  (value) => togglePerturbation(option.key, value)
-                "
+                :model-value="perturbationStore.isEnabled(workspaceStore.activeProjectId, option.key)"
+                :disabled="!workspaceStore.activeProjectId"
+                @update:model-value="togglePerturbation(option.key, $event)"
               />
             </div>
-            <!--测试与缺陷检测和 鲁棒性指标统计没有设计，暂时为空 -->
           </div>
-             <!-- 项目选择暂时为空 -->
-          <div class="stat-hint dash-hint">
+
+          <div class="stat-hint hint-row">
             <span>{{ activeProjectName ? `项目：${activeProjectName}` : "暂无项目" }}</span>
             <el-button link type="primary" @click="$router.push('/perturbations')">
               详细配置
@@ -99,7 +95,7 @@
             <div class="card-header">
               <span>项目选择</span>
               <div class="card-header-right">
-                <span class="muted">共 {{ projectTotal }} 个</span>
+                <span class="muted">共 {{ workspaceStore.projectTotal }} 个</span>
                 <el-button text type="primary" @click="$router.push('/projects')">
                   查看全部
                 </el-button>
@@ -107,7 +103,12 @@
             </div>
           </template>
 
-          <el-table :data="recentProjects" v-loading="loading" size="small" row-key="id">
+          <el-table
+            :data="recentProjects"
+            v-loading="workspaceStore.projectsLoading"
+            size="small"
+            row-key="id"
+          >
             <el-table-column prop="name" label="项目名称" min-width="160" show-overflow-tooltip />
             <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
             <el-table-column label="创建时间" width="170">
@@ -121,7 +122,8 @@
           </el-table>
         </el-card>
       </el-col>
-       <!-- 系统状态显示 -->
+
+      <!-- 系统状态显示 -->
       <el-col :xs="24" :lg="8">
         <el-card shadow="never">
           <template #header><span>系统状态</span></template>
@@ -161,47 +163,41 @@ import { ElMessage } from "element-plus";
 
 import PageHeader from "@/components/PageHeader.vue";
 import { ping } from "@/api/ping";
-import { listProjects } from "@/api/project";
 import { useModelStore } from "@/store/model";
 import {
   PERTURBATION_OPTIONS,
   usePerturbationStore,
 } from "@/store/perturbation";
 import { useWorkspaceStore } from "@/store/workspace";
+import { formatDate } from "@/utils/format";
 
 const workspaceStore = useWorkspaceStore();
 const perturbationStore = usePerturbationStore();
 const modelStore = useModelStore();
 
 const refreshing = ref(false);
-const loading = ref(false);
 const backendOnline = ref(false);
-const projectTotal = ref(0);
-const recentProjects = ref([]);
-const allProjects = ref([]);
 
 const perturbationOptions = PERTURBATION_OPTIONS;
 
+// 工作台只展示最近 5 个项目，完整列表在 workspace store 里
+const recentProjects = computed(() => workspaceStore.projects.slice(0, 5));
+
 // 工作台、模型页、配置页共用同一个项目上下文
-const activeProjectId = computed(() => workspaceStore.activeProjectId);
 const activeProjectName = computed(() => {
   const activeId = workspaceStore.activeProjectId;
-  const project = allProjects.value.find((item) => item.id === activeId);
+  const project = workspaceStore.projects.find((item) => item.id === activeId);
   // 项目列表请求失败时保留编号，避免开关可用但项目名显示为空
   return project?.name || (activeId ? `项目 #${activeId}` : "");
 });
 
 // 顶部卡片。模型和扰动配置使用自定义内容，其余先保留占位
-const cards = computed(() => [
+const cards = [
   { key: "model", label: "模型选择" },
   { key: "perturbation", label: "扰动参数配置" },
   { key: "plans", label: "测试与缺陷检测", value: "--", hint: "后端接口待实现" },
   { key: "runs", label: "鲁棒性指标统计", value: "--", hint: "后端接口待实现" },
-]);
-
-function formatDate(value) {
-  return value ? value.replace("T", " ").slice(0, 19) : "-";
-}
+];
 
 /**
  * 工作台开关的写操作。
@@ -215,9 +211,9 @@ function formatDate(value) {
  * 用户可以再拨一次重试，或去配置页点保存。
  */
 async function togglePerturbation(key, value) {
-  if (!activeProjectId.value) return;
+  if (!workspaceStore.activeProjectId) return;
 
-  perturbationStore.setEnabled(activeProjectId.value, key, value);
+  perturbationStore.setEnabled(workspaceStore.activeProjectId, key, value);
   try {
     await perturbationStore.saveConfig();
   } catch (error) {
@@ -228,52 +224,31 @@ async function togglePerturbation(key, value) {
 // 顶部聚合数据。扰动开关的写操作通过 store 完成，和配置页共用状态
 async function refresh() {
   refreshing.value = true;
-  loading.value = true;
 
   try {
     // allSettled：即使后端没启动，也不会因为一个接口失败导致整个页面空白。
-    // 这里取 100 条（后端上限），既能展示最近 5 条，也能找到当前选中的项目名称。
     const [pingResult, projectResult] = await Promise.allSettled([
       ping(),
-      listProjects(1, 100),
+      workspaceStore.loadProjects(),
     ]);
 
     backendOnline.value = pingResult.status === "fulfilled";
 
     if (projectResult.status === "fulfilled") {
-      const items = projectResult.value.items;
-      projectTotal.value = projectResult.value.total;
-      allProjects.value = items;
-      recentProjects.value = items.slice(0, 5);
-
-      // 保持模型页/配置页选中的项目；只有它不存在时才回退到第一个项目
-      const activeExists = items.some(
-        (project) => project.id === workspaceStore.activeProjectId,
-      );
-      if (!activeExists) {
-        workspaceStore.setActiveProject(items[0]?.id ?? null);
-      }
-
       // 工作台模型卡片和模型选择页共用 modelStore
       await modelStore.loadModels().catch(() => {});
 
-      // 读取当前项目已保存的扰动开关。
-      // 这里用 catch(() => {}) 静默失败：工作台是概览页，
-      // 后端挂了时不应该整页报错，开关停在默认关闭状态即可
-      // （系统状态卡片会单独显示“未连接”）。
+      // 这里静默失败：工作台是概览页，后端挂了时不应该整页报错，
+      // 开关停在默认关闭状态即可（系统状态卡片会单独显示“未连接”）。
       await perturbationStore.loadConfig().catch(() => {});
     } else {
-      projectTotal.value = 0;
-      allProjects.value = [];
-      recentProjects.value = [];
       modelStore.reset();
     }
   } finally {
     refreshing.value = false;
-    loading.value = false;
   }
 }
-//css部分
+
 onMounted(refresh);
 </script>
 
@@ -284,7 +259,7 @@ onMounted(refresh);
   margin-bottom: 16px;
 }
 
-.card-title-row {
+.card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -345,13 +320,6 @@ onMounted(refresh);
   white-space: nowrap;
 }
 
-.model-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 /* 工作台上的扰动开关：只保留项目名 + 开关，保持卡片紧凑 */
 .dash-options {
   margin-top: 4px;
@@ -373,14 +341,15 @@ onMounted(refresh);
   text-overflow: ellipsis;
 }
 
-.dash-hint {
+/* 卡片底部一行：左侧说明，右侧操作链接 */
+.hint-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.dash-hint .el-button {
+.hint-row .el-button {
   height: auto;
   padding: 0;
   font-size: 12px;
@@ -406,12 +375,6 @@ onMounted(refresh);
 
 .lower {
   margin-top: 8px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .card-header-right {

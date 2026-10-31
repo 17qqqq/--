@@ -17,7 +17,6 @@ export const useModelStore = defineStore("model", () => {
 
   const models = ref([]);
   const loading = ref(false);
-  const loadedProjectId = ref(null);
 
   // 防止快速切换项目时，旧请求的结果覆盖新项目
   let requestSeq = 0;
@@ -31,7 +30,6 @@ export const useModelStore = defineStore("model", () => {
     if (!projectId) {
       requestSeq += 1;
       models.value = [];
-      loadedProjectId.value = null;
       loading.value = false;
       return [];
     }
@@ -43,12 +41,10 @@ export const useModelStore = defineStore("model", () => {
       if (seq !== requestSeq) return models.value;
 
       models.value = data.items;
-      loadedProjectId.value = projectId;
       return models.value;
     } catch (error) {
       if (seq === requestSeq) {
         models.value = [];
-        loadedProjectId.value = null;
       }
       throw error;
     } finally {
@@ -82,14 +78,12 @@ export const useModelStore = defineStore("model", () => {
   function reset() {
     requestSeq += 1;
     models.value = [];
-    loadedProjectId.value = null;
     loading.value = false;
   }
 
   return {
     models,
     loading,
-    loadedProjectId,
     activeProjectId,
     activeModel,
     loadModels,

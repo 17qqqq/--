@@ -13,7 +13,7 @@
 //   后端 GET /perturbations/{id} → loadConfig() → setConfig() → configs[projectId]
 //   用户拨动开关 → setEnabled()（本地立即生效）→ saveConfig() → 后端 PUT
 //   保存成功后用后端返回值再覆盖一次，保证和数据库完全一致（含 updated_at）。
-import { computed, reactive, ref } from "vue";
+import { computed, reactive } from "vue";
 import { defineStore } from "pinia";
 
 import {
@@ -66,10 +66,6 @@ export const usePerturbationStore = defineStore("perturbation", () => {
   // 用 reactive 而不是 ref：v-model 会直接改 configs[key].xxx，
   // reactive 能追踪对象属性的增删改，两个页面都会自动重新渲染。
   const configs = reactive({});
-
-  // 已从后端加载过配置的项目 id。工作台刷新时用来跳过重复请求；
-  // 目前即使重复请求也不会有副作用（GET 是幂等的），保留它方便以后优化。
-  const loadedProjectId = ref(null);
 
   // 请求序号：防止"快速切换项目"时，先发的请求后返回，把新项目的数据覆盖掉。
   // 每次请求自增，回来时序号不一致就丢弃结果。
@@ -141,10 +137,7 @@ export const usePerturbationStore = defineStore("perturbation", () => {
   // 所以这里不需要先判断"有没有配置"。
   // 失败时异常向上抛，由调用方决定是提示用户还是静默（工作台选择静默）。
   async function loadConfig(projectId = workspace.activeProjectId) {
-    if (!projectId) {
-      loadedProjectId.value = null;
-      return null;
-    }
+    if (!projectId) return null;
 
     const seq = ++requestSeq;
     const data = await getPerturbationConfig(projectId);
@@ -153,7 +146,6 @@ export const usePerturbationStore = defineStore("perturbation", () => {
     if (seq !== requestSeq) return getConfig(projectId);
 
     setConfig(projectId, data);
-    loadedProjectId.value = projectId;
     return data;
   }
 
@@ -181,7 +173,6 @@ export const usePerturbationStore = defineStore("perturbation", () => {
     });
     // 用后端返回值覆盖本地：这样 updated_at 等字段和数据库完全一致
     setConfig(projectId, data);
-    loadedProjectId.value = projectId;
     return data;
   }
 
@@ -190,7 +181,6 @@ export const usePerturbationStore = defineStore("perturbation", () => {
   return {
     activeProjectId,
     configs,
-    loadedProjectId,
     getConfig,
     setActiveProject,
     isEnabled,

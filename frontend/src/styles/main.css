@@ -47,3 +47,37 @@ body {
 .page {
   padding: 20px;
 }
+
+/* ---- 业务页通用布局 ---- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-card {
+  margin-bottom: 16px;
+}
+
+.toolbar-label {
+  font-size: 13px;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.filter-input {
+  width: 240px;
+}
+
+.toolbar-tip {
+  margin-left: auto;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}

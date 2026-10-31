@@ -15,24 +15,7 @@
 
     <el-card shadow="never" class="toolbar-card">
       <div class="toolbar">
-        <div class="project-picker">
-          <span class="toolbar-label">项目</span>
-          <el-select
-            v-model="projectId"
-            :loading="projectsLoading"
-            :disabled="projects.length === 0"
-            placeholder="请选择项目"
-            class="project-select"
-            @change="handleProjectChange"
-          >
-            <el-option
-              v-for="project in projects"
-              :key="project.id"
-              :label="project.name"
-              :value="project.id"
-            />
-          </el-select>
-        </div>
+        <ProjectSelect @change="handleProjectChange" />
 
         <div class="active-model">
           <span class="toolbar-label">当前模型</span>
@@ -89,11 +72,11 @@
 
         <template #empty>
           <el-empty
-            :description="projects.length ? '当前项目还没有模型' : '还没有项目，请先创建项目'"
+            :description="workspace.projects.length ? '当前项目还没有模型' : '还没有项目，请先创建项目'"
             :image-size="90"
           >
             <el-button
-              v-if="!projects.length"
+              v-if="!workspace.projects.length"
               type="primary"
               @click="$router.push('/projects')"
             >
@@ -160,56 +143,40 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import PageHeader from "@/components/PageHeader.vue";
-import { listProjects } from "@/api/project";
+import ProjectSelect from "@/components/ProjectSelect.vue";
 import { useModelStore } from "@/store/model";
 import { useWorkspaceStore } from "@/store/workspace";
 
 const workspace = useWorkspaceStore();
 const modelStore = useModelStore();
 
-const projects = ref([]);
-const projectsLoading = ref(false);
 const dialogVisible = ref(false);
 const submitting = ref(false);
 const activatingId = ref(null);
 const formRef = ref(null);
 
-const projectId = computed({
-  get: () => workspace.activeProjectId,
-  set: (value) => workspace.setActiveProject(value),
-});
+// 项目由 ProjectSelect 写入 workspace，这里只读
+const projectId = computed(() => workspace.activeProjectId);
 
-const form = reactive({
+const emptyForm = {
   name: "",
   version: "",
   framework: "pytorch",
   file_path: "",
   description: "",
-});
+};
+const form = reactive({ ...emptyForm });
 
 const rules = {
   name: [{ required: true, message: "请输入模型名称", trigger: "blur" }],
 };
 
 async function loadProjects() {
-  projectsLoading.value = true;
   try {
-    const data = await listProjects(1, 100);
-    projects.value = data.items;
-
-    // 保留工作台/配置页已选中的项目，只有它不存在时才回退到第一个
-    const activeExists = data.items.some(
-      (project) => project.id === workspace.activeProjectId,
-    );
-    if (!activeExists) {
-      workspace.setActiveProject(data.items[0]?.id ?? null);
-    }
-
+    await workspace.loadProjects();
     await modelStore.loadModels();
   } catch (error) {
     ElMessage.error(error.message);
-  } finally {
-    projectsLoading.value = false;
   }
 }
 
@@ -231,12 +198,8 @@ function openCreate() {
 }
 
 function resetForm() {
-  formRef.value?.resetFields();
-  form.name = "";
-  form.version = "";
-  form.framework = "pytorch";
-  form.file_path = "";
-  form.description = "";
+  Object.assign(form, emptyForm);
+  formRef.value?.clearValidate();
 }
 
 async function submit() {
@@ -278,32 +241,15 @@ onMounted(loadProjects);
 </script>
 
 <style scoped>
-.toolbar-card {
-  margin-bottom: 16px;
-}
-
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.project-picker,
 .active-model {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.toolbar-label {
-  font-size: 13px;
-  color: #4b5563;
-}
-
-.project-select {
-  width: 260px;
 }
 
 .muted {

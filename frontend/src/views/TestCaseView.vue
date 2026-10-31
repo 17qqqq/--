@@ -16,22 +16,7 @@
     <!-- 项目上下文：与模型选择、扰动配置共用 workspace 里的当前项目 -->
     <el-card shadow="never" class="toolbar-card">
       <div class="toolbar">
-        <span class="toolbar-label">项目</span>
-        <el-select
-          v-model="projectId"
-          :loading="projectsLoading"
-          :disabled="projects.length === 0"
-          placeholder="请选择项目"
-          class="project-select"
-          @change="handleProjectChange"
-        >
-          <el-option
-            v-for="project in projects"
-            :key="project.id"
-            :label="project.name"
-            :value="project.id"
-          />
-        </el-select>
+        <ProjectSelect @change="handleProjectChange" />
 
         <el-input
           v-model="keyword"
@@ -91,7 +76,7 @@
         <template #empty>
           <el-empty :description="emptyText" :image-size="90">
             <el-button
-              v-if="!projects.length"
+              v-if="!workspace.projects.length"
               type="primary"
               @click="$router.push('/projects')"
             >
@@ -183,7 +168,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 
 import PageHeader from "@/components/PageHeader.vue";
-import { listProjects } from "@/api/project";
+import ProjectSelect from "@/components/ProjectSelect.vue";
 import {
   createTestCase,
   deleteTestCase,
@@ -191,18 +176,12 @@ import {
   updateTestCase,
 } from "@/api/testCase";
 import { useWorkspaceStore } from "@/store/workspace";
+import { formatDate } from "@/utils/format";
 
 const workspace = useWorkspaceStore();
 
-// ---- 项目上下文 ----
-const projects = ref([]);
-const projectsLoading = ref(false);
-
-// 用 computed get/set 直接读写 workspace，切页后仍保持同一个当前项目
-const projectId = computed({
-  get: () => workspace.activeProjectId,
-  set: (value) => workspace.setActiveProject(value),
-});
+// 项目由 ProjectSelect 写入 workspace，这里只读
+const projectId = computed(() => workspace.activeProjectId);
 
 // ---- 列表状态 ----
 const rows = ref([]);
@@ -220,40 +199,23 @@ const filteredRows = computed(() => {
 });
 
 const emptyText = computed(() => {
-  if (!projects.value.length) return "还没有项目，请先创建项目";
+  if (!workspace.projects.length) return "还没有项目，请先创建项目";
   if (!projectId.value) return "请先选择顶部的项目";
   return "当前项目还没有用例，点击“新建用例”开始";
 });
-
-function formatDate(value) {
-  return value ? value.replace("T", " ").slice(0, 19) : "-";
-}
 
 // 竞态保护：快速切换项目时，先发出的请求可能后返回。
 // 每次请求领一个序号，只有最后一次发出的响应才允许写回页面。
 let loadSeq = 0;
 
 async function loadProjects() {
-  projectsLoading.value = true;
   try {
-    const data = await listProjects(1, 100);
-    projects.value = data.items;
-
-    // 保留其他页面已选中的项目；它不存在时才回退到第一个
-    const activeExists = data.items.some(
-      (project) => project.id === workspace.activeProjectId,
-    );
-    if (!activeExists) {
-      workspace.setActiveProject(data.items[0]?.id ?? null);
-    }
-
+    await workspace.loadProjects();
     if (workspace.activeProjectId) {
       await fetchList();
     }
   } catch (error) {
     ElMessage.error(error.message);
-  } finally {
-    projectsLoading.value = false;
   }
 }
 
@@ -349,13 +311,14 @@ const submitting = ref(false);
 const editingId = ref(null);
 const formRef = ref(null);
 
-const form = reactive({
+const emptyForm = {
   name: "",
   description: "",
   image_path: "",
   mask_path: "",
   enabled: true,
-});
+};
+const form = reactive({ ...emptyForm });
 
 // 规则与后端 TestCaseCreate / TestCaseUpdate 保持一致
 const rules = {
@@ -370,11 +333,7 @@ const rules = {
 
 function resetForm() {
   editingId.value = null;
-  form.name = "";
-  form.description = "";
-  form.image_path = "";
-  form.mask_path = "";
-  form.enabled = true;
+  Object.assign(form, emptyForm);
   formRef.value?.clearValidate();
 }
 
@@ -432,36 +391,6 @@ onMounted(loadProjects);
 </script>
 
 <style scoped>
-.toolbar-card {
-  margin-bottom: 16px;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.toolbar-label {
-  font-size: 13px;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.project-select {
-  width: 200px;
-}
-
-.filter-input {
-  width: 240px;
-}
-
-.toolbar-tip {
-  margin-left: auto;
-  font-size: 13px;
-  color: #6b7280;
-}
-
 .enabled-cell {
   display: flex;
   align-items: center;
@@ -477,11 +406,5 @@ onMounted(loadProjects);
   margin-left: 12px;
   font-size: 12px;
   color: #909399;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
 }
 </style>

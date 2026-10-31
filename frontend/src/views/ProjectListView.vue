@@ -108,6 +108,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import PageHeader from "@/components/PageHeader.vue";
 import { createProject, deleteProject, listProjects } from "@/api/project";
 import { useWorkspaceStore } from "@/store/workspace";
+import { formatDate } from "@/utils/format";
 
 const workspace = useWorkspaceStore();
 
@@ -125,10 +126,6 @@ const filteredRows = computed(() => {
   if (!key) return rows.value;
   return rows.value.filter((row) => row.name.toLowerCase().includes(key));
 });
-
-function formatDate(value) {
-  return value ? value.replace("T", " ").slice(0, 19) : "-";
-}
 
 async function fetchList() {
   loading.value = true;
@@ -154,10 +151,8 @@ function handleSizeChange() {
 const dialogVisible = ref(false);
 const submitting = ref(false);
 const formRef = ref();
-const form = reactive({
-  name: "",
-  description: "",
-});
+const emptyForm = { name: "", description: "" };
+const form = reactive({ ...emptyForm });
 
 const rules = {
   name: [
@@ -172,8 +167,7 @@ function openCreate() {
 }
 
 function resetForm() {
-  form.name = "";
-  form.description = "";
+  Object.assign(form, emptyForm);
   formRef.value?.clearValidate();
 }
 
@@ -245,25 +239,6 @@ onMounted(fetchList);
 
 <style scoped>
 .toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 16px;
-}
-
-.filter-input {
-  width: 260px;
-}
-
-.toolbar-tip {
-  margin-left: auto;
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
 }
 </style>

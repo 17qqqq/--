@@ -80,13 +80,6 @@ export const useAppearanceStore = defineStore("appearance", () => {
     return { background: "var(--app-bg)" };
   });
 
-  function hasCustomBackground() {
-    return (
-      backgroundMode.value === "color" ||
-      (backgroundMode.value === "image" && Boolean(backgroundImage.value))
-    );
-  }
-
   function setBackgroundImage(dataUrl, fileName = "") {
     backgroundImage.value = dataUrl;
     backgroundImageName.value = fileName;
@@ -156,7 +149,6 @@ export const useAppearanceStore = defineStore("appearance", () => {
     cardOpacity,
     backgroundStyle,
     storageError,
-    hasCustomBackground,
     setBackgroundImage,
     removeBackgroundImage,
     reset,

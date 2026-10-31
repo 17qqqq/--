@@ -2,12 +2,9 @@
 :root {
   /* ---- 应用布局 ---- */
   --app-aside-width: 220px;
-  --app-aside-collapsed-width: 64px;
   --app-header-height: 56px;
   --app-bg: #f5f7fa;
   --app-aside-bg: #111827;
-  --app-aside-text: #cbd5e1;
-  --app-header-bg: #ffffff;
   --app-border: #e5e7eb;
 
   /* ---- Element Plus 主色覆盖 ----

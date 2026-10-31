@@ -253,22 +253,21 @@ watch(
   border-bottom: 1px solid var(--app-border);
 }
 
-.header-left {
+.header-left,
+.header-right {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.header-right {
+  gap: 10px;
 }
 
 .header-title {
   font-size: 15px;
   font-weight: 600;
   color: #111827;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .appearance-button {
