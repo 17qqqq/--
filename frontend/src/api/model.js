@@ -1,6 +1,4 @@
 // 模型选择相关接口，对应后端 app/routers/v1/models.py
-//
-// 后端当前是骨架，业务逻辑补齐前这些接口会返回 501。
 // 页面接入时只需要 import 这些函数，不要直接写 fetch。
 import { request } from "./request";
 

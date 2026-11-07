@@ -26,11 +26,11 @@ class TestPlanService:
         self.case_repo = TestCaseRepository(db)
 
     # ── 校验工具 ────────────────────────────────────────────────────────
-    def _ensure_project(self, project_id: int) -> None:
+    def ensure_project(self, project_id: int) -> None:
         if not self.db.get(Project, project_id):
             raise NotFoundError("项目不存在")
 
-    def _ensure_model(self, project_id: int, model_id: int | None) -> None:
+    def ensure_model(self, project_id: int, model_id: int | None) -> None:
         """模型可以为空；不为空时必须属于当前项目。"""
         if model_id is None:
             return
@@ -38,9 +38,8 @@ class TestPlanService:
         if not model or model.project_id != project_id:
             raise BadRequestError("模型不存在或不属于该项目")
 
-    def _resolve_cases(self, project_id: int, case_ids: list[int]):
+    def resolve_cases(self, project_id: int, case_ids: list[int]):
         """把 id 列表换成用例对象，并校验它们都属于当前项目。
-
         去重后再查，避免前端重复勾选导致关联表主键冲突；
         数量对不上说明有非法 id，直接拒绝。
         """
@@ -55,9 +54,8 @@ class TestPlanService:
         case_map = {case.id: case for case in cases}
         return [case_map[case_id] for case_id in unique_ids]
 
-    def _build_snapshot(self, project_id: int) -> dict:
+    def build_snapshot(self, project_id: int) -> dict:
         """把当前扰动配置复制一份存进计划。
-
         之后用户修改项目的扰动开关，不会影响已经建好的计划——
         历史计划应该按"创建时的配置"执行，这样报告才可复现。
         """
@@ -70,29 +68,29 @@ class TestPlanService:
             "strength": config.strength,
         }
 
-    # ── 增删改查 ────────────────────────────────────────────────────────
+    #增删改查
     def create(self, payload: TestPlanCreate):
-        self._ensure_project(payload.project_id)
-        self._ensure_model(payload.project_id, payload.model_id)
+        self.ensure_project(payload.project_id)
+        self.ensure_model(payload.project_id, payload.model_id)
 
         data = payload.model_dump(exclude={"case_ids"})
         obj = self.repo.create(
             **data,
-            perturbation_snapshot=self._build_snapshot(payload.project_id),
+            perturbation_snapshot=self.build_snapshot(payload.project_id),
         )
-        obj.cases = self._resolve_cases(payload.project_id, payload.case_ids)
+        obj.cases = self.resolve_cases(payload.project_id, payload.case_ids)
 
         self.db.commit()
         self.db.refresh(obj)
         return obj
 
     def list(self, project_id: int, params: PageParams):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         offset = (params.page - 1) * params.size
         return self.repo.list_by_project(project_id, offset=offset, limit=params.size)
 
     def get(self, project_id: int, plan_id: int):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         obj = self.repo.get_by_project(project_id, plan_id)
         if not obj:
             raise NotFoundError("测试计划不存在")
@@ -106,14 +104,14 @@ class TestPlanService:
         case_ids = data.pop("case_ids", None)
 
         if "model_id" in data:
-            self._ensure_model(project_id, data["model_id"])
+            self.ensure_model(project_id, data["model_id"])
 
         for key, value in data.items():
             setattr(obj, key, value)
 
         # 传 [] 表示清空；没传（None）表示不动
         if case_ids is not None:
-            obj.cases = self._resolve_cases(project_id, case_ids)
+            obj.cases = self.resolve_cases(project_id, case_ids)
 
         self.db.commit()
         self.db.refresh(obj)

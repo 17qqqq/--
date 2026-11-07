@@ -27,11 +27,11 @@ class ReportService:
         self.db = db
         self.repo = ReportRepository(db)
 
-    def _ensure_project(self, project_id: int) -> None:
+    def ensure_project(self, project_id: int) -> None:
         if not self.db.get(Project, project_id):
             raise NotFoundError("项目不存在")
 
-    def _ensure_plan(self, project_id: int, plan_id: int | None) -> None:
+    def ensure_plan(self, project_id: int, plan_id: int | None) -> None:
         """计划可以为空；不为空时必须存在且属于当前项目。"""
         if plan_id is None:
             return
@@ -45,8 +45,8 @@ class ReportService:
         调用方（指标/执行模块）负责提供 metrics 汇总和 snapshots 明细；
         这里只做归属校验和落库，并标记为已生成。
         """
-        self._ensure_project(payload.project_id)
-        self._ensure_plan(payload.project_id, payload.test_plan_id)
+        self.ensure_project(payload.project_id)
+        self.ensure_plan(payload.project_id, payload.test_plan_id)
 
         report = self.repo.create(
             project_id=payload.project_id,
@@ -68,12 +68,12 @@ class ReportService:
         return report
 
     def list(self, project_id: int, params: PageParams):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         offset = (params.page - 1) * params.size
         return self.repo.list_by_project(project_id, offset=offset, limit=params.size)
 
     def get(self, project_id: int, report_id: int):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         obj = self.repo.get_by_project(project_id, report_id)
         if not obj:
             raise NotFoundError("测试报告不存在")
@@ -94,8 +94,8 @@ class ReportService:
           4. 指标模块计算数值（app/interfaces/metrics.py）
         以上实现注册齐之后，把这里的占位替换成调用执行引擎即可。
         """
-        self._ensure_project(payload.project_id)
-        self._ensure_plan(payload.project_id, payload.test_plan_id)
+        self.ensure_project(payload.project_id)
+        self.ensure_plan(payload.project_id, payload.test_plan_id)
         raise NotImplementedYetError(
             "报告自动生成依赖推理、扰动、指标实现，当前尚未接入；"
             "可先用 POST /reports 提交已计算好的指标数据。"

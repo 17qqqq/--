@@ -38,23 +38,19 @@ class ProjectService:
 
     def delete(self, project_id: int) -> None:
         """删除项目及它名下的全部数据。
-
         数据库里只有 report_snapshots 和 test_plan_cases 声明了级联，
         其余外键都是普通约束，所以这里按依赖顺序显式清理：
-        报告明细 → 报告 → 计划 → 用例 → 扰动配置 → 模型 → 项目。
-
-        计划-用例关联行依赖外键 ON DELETE CASCADE 自动清理（SQLite
-        已在 db/session.py 里开启 PRAGMA foreign_keys=ON）。
-        写成显式删除而不是改表级联，是为了不要求用户重建已有数据库。
+        报告明细 → 报告 → 计划 → 用例 → 扰动配置 → 模型 → 项目。。
         """
         project = self.get(project_id)
 
-        # 报告里的指标明细先删，否则删报告时外键会拦（也兼容未开级联的环境）
+
         report_ids = select(Report.id).where(Report.project_id == project_id)
         self.db.execute(
             delete(ReportSnapshot).where(ReportSnapshot.report_id.in_(report_ids))
         )
         self.db.execute(delete(Report).where(Report.project_id == project_id))
+
 
         # 报告引用了 test_plans，必须先删报告再删计划
         self.db.execute(delete(TestPlan).where(TestPlan.project_id == project_id))

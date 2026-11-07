@@ -32,7 +32,7 @@ class PerturbationService:
         self.db = db
         self.repo = PerturbationRepository(db)
 
-    def _ensure_project(self, project_id: int) -> None:
+    def ensure_project(self, project_id: int) -> None:
         """确认项目存在。
 
         直接查主键是成本最低的方式（SQLite 主键索引）。
@@ -43,15 +43,11 @@ class PerturbationService:
 
     def get_or_create(self, project_id: int):
         """查询项目配置；不存在时按默认值创建一条。
-
         为什么让 GET 也写库：
         - 前端打开配置页不需要先判断"有没有配置"，少一次请求、少一种分支
         - 默认值（三个开关 False、params NULL、strength 100）只在模型里定义一次，
-          前端不需要自己造一份"默认配置"
-        注意：这是"读时创建"（read-through）模式，适合配置类数据；
-        如果以后要统计"创建时间"，第一次 GET 的时间就是创建时间。
         """
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
 
         obj = self.repo.get_by_project(project_id)
         if obj is None:

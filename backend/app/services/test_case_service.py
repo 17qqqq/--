@@ -20,12 +20,12 @@ class TestCaseService:
         self.db = db
         self.repo = TestCaseRepository(db)
 
-    def _ensure_project(self, project_id: int) -> None:
+    def ensure_project(self, project_id: int) -> None:
         if not self.db.get(Project, project_id):
             raise NotFoundError("项目不存在")
 
     def create(self, payload: TestCaseCreate):
-        self._ensure_project(payload.project_id)
+        self.ensure_project(payload.project_id)
         obj = self.repo.create(**payload.model_dump())
         self.db.commit()
         self.db.refresh(obj)
@@ -37,7 +37,7 @@ class TestCaseService:
         params: PageParams,
         enabled: bool | None = None,
     ):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         offset = (params.page - 1) * params.size
         return self.repo.list_by_project(
             project_id,
@@ -47,7 +47,7 @@ class TestCaseService:
         )
 
     def get(self, project_id: int, case_id: int):
-        self._ensure_project(project_id)
+        self.ensure_project(project_id)
         obj = self.repo.get_by_project(project_id, case_id)
         if not obj:
             raise NotFoundError("测试用例不存在")
