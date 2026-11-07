@@ -13,7 +13,7 @@
         router 属性让 el-menu 自动调用 router.push，不需要手写点击事件。
       -->
       <el-menu
-        :default-active="route.path"
+        :default-active="activeMenu"
         :collapse="appStore.sidebarCollapsed"
         :collapse-transition="false"
         router
@@ -93,7 +93,6 @@ import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   Brush,
-  Calendar,
   Cpu,
   DataAnalysis,
   Document,
@@ -102,7 +101,6 @@ import {
   Folder,
   Odometer,
   Setting,
-  VideoPlay,
 } from "@element-plus/icons-vue";
 
 import AppearanceDrawer from "@/components/AppearanceDrawer.vue";
@@ -126,11 +124,17 @@ const menus = [
   { path: "/projects", title: "项目管理", icon: Folder },
   { path: "/models", title: "模型选择", icon: Cpu },
   { path: "/perturbations", title: "扰动参数配置", icon: Setting },
-  { path: "/test-cases", title: "测试用例", icon: Document },
-  { path: "/test-plans", title: "测试计划", icon: Calendar },
-  { path: "/test-runs", title: "执行记录", icon: VideoPlay },
+  { path: "/test-records", title: "测试记录", icon: Document },
   { path: "/reports", title: "测试报告", icon: DataAnalysis },
 ];
+
+// 详情页（/reports/1）也要让「测试报告」菜单保持高亮
+const activeMenu = computed(
+  () =>
+    menus.find(
+      (item) => route.path === item.path || route.path.startsWith(`${item.path}/`),
+    )?.path ?? route.path,
+);
 
 // 切换方向：菜单顺序靠后 = 前进（slide-left），靠前 = 后退（slide-right）
 const transitionName = ref("slide-left");

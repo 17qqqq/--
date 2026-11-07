@@ -2,6 +2,12 @@
 #
 # 报告数据由指标/执行模块计算后提交；本路由负责存储与查询。
 # 自动生成接口 /generate 已定义，但依赖的算法实现尚未接入，当前返回 501。
+#
+# 前端对应关系（frontend/src/views）：
+#   TestRecordsView  → GET /reports          每条报告即一条测试记录，metrics 是主要结果
+#   ReportView       → GET /reports          测试报告列表
+#   ReportDetailView → GET /reports/{id}     详情页，snapshots 是逐条指标明细
+# 前端只查询，不触发计算；报告由 POST /reports 写入。
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
